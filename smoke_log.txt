@@ -1,0 +1,27 @@
+LENS-ADNet Fine-tuned Training Log
+============================================================
+
+  LENS-ADNet: Lightweight Explainable Neural-Symbolic Network
+  Target    : 90%+ train and validation accuracy
+  Strategy  : Two-stage + Mixup + TTA + Strong augmentation
+============================================================
+  Device      : cuda
+  Epochs      : 2  (single-stage fine-tuning)
+  Batch size  : 4
+  LR stage 1  : 0.001
+  LR stage 2  : 0.0001
+  Mixup alpha : 0.0
+  TTA steps   : 1
+  Root dir    : F:\Program\LENS_ADNet
+
+  Clinical features : 1
+  Total parameters  : 6,034,286
+
+  Class distribution in training set:
+    CN  : 259 scans  (weight = 1.058)
+    MCI  : 392 scans  (weight = 0.699)
+    AD  : 171 scans  (weight = 1.602)
+
+============================================================
+  STAGE 2 — Full fine-tuning
+============================================================

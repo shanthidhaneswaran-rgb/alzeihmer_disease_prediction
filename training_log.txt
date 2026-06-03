@@ -1,0 +1,119 @@
+LENS-ADNet Training Log
+============================================================
+
+  LENS-ADNet: Lightweight Explainable Neural-Symbolic Network
+  Dataset   : ADNI1 Complete 3Yr 1.5T (448 scans)
+  Realistic target: 72-82% accuracy
+============================================================
+  Device      : cuda
+  Epochs      : 100
+  Batch size  : 8
+  Mixup       : DISABLED (small dataset)
+  Label smooth: DISABLED (small dataset)
+  Split       : Patient-level (no data leakage)
+
+  Total parameters  : 6,125,771
+
+  Class distribution:
+    CN  : 247 scans  (weight = 1.109)
+    MCI  : 388 scans  (weight = 0.706)
+    AD  : 187 scans  (weight = 1.465)
+
+============================================================
+  STAGE 1 — Backbone frozen
+============================================================
+  Backbone FROZEN (stage 1)
+  [S1] Epoch 01/20 | Train Acc: 41.4% | Val Acc: 43.4% | Val F1: 0.383
+    >> Best model saved (Val Acc: 43.41%  F1: 0.383)
+  [S1] Epoch 02/20 | Train Acc: 45.6% | Val Acc: 53.3% | Val F1: 0.479
+    >> Best model saved (Val Acc: 53.30%  F1: 0.479)
+  [S1] Epoch 03/20 | Train Acc: 49.0% | Val Acc: 61.0% | Val F1: 0.608
+    >> Best model saved (Val Acc: 60.99%  F1: 0.608)
+  [S1] Epoch 04/20 | Train Acc: 51.1% | Val Acc: 52.7% | Val F1: 0.525
+  [S1] Epoch 05/20 | Train Acc: 51.0% | Val Acc: 51.1% | Val F1: 0.441
+  [S1] Epoch 06/20 | Train Acc: 56.8% | Val Acc: 53.8% | Val F1: 0.524
+  [S1] Epoch 07/20 | Train Acc: 58.6% | Val Acc: 54.4% | Val F1: 0.534
+  [S1] Epoch 08/20 | Train Acc: 56.3% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 09/20 | Train Acc: 59.6% | Val Acc: 57.7% | Val F1: 0.579
+  [S1] Epoch 10/20 | Train Acc: 59.2% | Val Acc: 54.4% | Val F1: 0.518
+  [S1] Epoch 11/20 | Train Acc: 59.9% | Val Acc: 54.4% | Val F1: 0.546
+  [S1] Epoch 12/20 | Train Acc: 60.8% | Val Acc: 62.1% | Val F1: 0.626
+    >> Best model saved (Val Acc: 62.09%  F1: 0.626)
+  [S1] Epoch 13/20 | Train Acc: 61.1% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 14/20 | Train Acc: 58.2% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 15/20 | Train Acc: 61.9% | Val Acc: 57.1% | Val F1: 0.576
+  [S1] Epoch 16/20 | Train Acc: 62.5% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 17/20 | Train Acc: 63.4% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 18/20 | Train Acc: 64.1% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 19/20 | Train Acc: 63.9% | Val Acc: 58.2% | Val F1: 0.584
+  [S1] Epoch 20/20 | Train Acc: 61.2% | Val Acc: 58.2% | Val F1: 0.584
+
+============================================================
+  STAGE 2 — Full fine-tuning
+============================================================
+  All layers UNFROZEN (stage 2)
+  [S2] Epoch 021/100 | Train Acc: 61.4% | Val Acc: 58.2% | Val F1: 0.584
+  [S2] Epoch 022/100 | Train Acc: 64.7% | Val Acc: 50.5% | Val F1: 0.519
+  [S2] Epoch 023/100 | Train Acc: 65.7% | Val Acc: 51.6% | Val F1: 0.527
+  [S2] Epoch 024/100 | Train Acc: 65.8% | Val Acc: 50.5% | Val F1: 0.522
+  [S2] Epoch 025/100 | Train Acc: 66.1% | Val Acc: 58.2% | Val F1: 0.586
+  [S2] Epoch 026/100 | Train Acc: 65.7% | Val Acc: 51.1% | Val F1: 0.494
+  [S2] Epoch 027/100 | Train Acc: 67.8% | Val Acc: 57.1% | Val F1: 0.576
+  [S2] Epoch 028/100 | Train Acc: 69.6% | Val Acc: 58.2% | Val F1: 0.593
+  [S2] Epoch 029/100 | Train Acc: 73.5% | Val Acc: 64.8% | Val F1: 0.659
+    >> Best model saved (Val Acc: 64.84%  F1: 0.659)
+  [S2] Epoch 030/100 | Train Acc: 74.6% | Val Acc: 58.2% | Val F1: 0.596
+  [S2] Epoch 031/100 | Train Acc: 77.7% | Val Acc: 45.6% | Val F1: 0.440
+  [S2] Epoch 032/100 | Train Acc: 78.3% | Val Acc: 61.5% | Val F1: 0.632
+  [S2] Epoch 033/100 | Train Acc: 78.5% | Val Acc: 57.1% | Val F1: 0.543
+  [S2] Epoch 034/100 | Train Acc: 83.2% | Val Acc: 56.0% | Val F1: 0.544
+  [S2] Epoch 035/100 | Train Acc: 84.9% | Val Acc: 53.3% | Val F1: 0.534
+  [S2] Epoch 036/100 | Train Acc: 84.3% | Val Acc: 58.8% | Val F1: 0.573
+  [S2] Epoch 037/100 | Train Acc: 83.9% | Val Acc: 55.5% | Val F1: 0.561
+  [S2] Epoch 038/100 | Train Acc: 84.5% | Val Acc: 48.4% | Val F1: 0.487
+  [S2] Epoch 039/100 | Train Acc: 83.3% | Val Acc: 51.6% | Val F1: 0.527
+  [S2] Epoch 040/100 | Train Acc: 89.1% | Val Acc: 58.2% | Val F1: 0.571
+  [S2] Epoch 041/100 | Train Acc: 87.8% | Val Acc: 57.7% | Val F1: 0.588
+  [S2] Epoch 042/100 | Train Acc: 85.9% | Val Acc: 53.8% | Val F1: 0.549
+  [S2] Epoch 043/100 | Train Acc: 90.0% | Val Acc: 50.5% | Val F1: 0.514
+  [S2] Epoch 044/100 | Train Acc: 91.5% | Val Acc: 53.8% | Val F1: 0.536
+  [S2] Epoch 045/100 | Train Acc: 92.0% | Val Acc: 52.2% | Val F1: 0.539
+  [S2] Epoch 046/100 | Train Acc: 89.7% | Val Acc: 52.7% | Val F1: 0.515
+  [S2] Epoch 047/100 | Train Acc: 90.5% | Val Acc: 55.5% | Val F1: 0.554
+  [S2] Epoch 048/100 | Train Acc: 91.7% | Val Acc: 53.8% | Val F1: 0.548
+  [S2] Epoch 049/100 | Train Acc: 91.7% | Val Acc: 59.3% | Val F1: 0.603
+  [S2] Epoch 050/100 | Train Acc: 91.6% | Val Acc: 57.7% | Val F1: 0.581
+  [S2] Epoch 051/100 | Train Acc: 93.1% | Val Acc: 57.1% | Val F1: 0.572
+  [S2] Epoch 052/100 | Train Acc: 94.2% | Val Acc: 47.3% | Val F1: 0.473
+  [S2] Epoch 053/100 | Train Acc: 94.0% | Val Acc: 54.9% | Val F1: 0.520
+  [S2] Epoch 054/100 | Train Acc: 92.9% | Val Acc: 48.4% | Val F1: 0.481
+
+  Early stopping at epoch 54
+
+============================================================
+  FINAL TEST EVALUATION (with TTA)
+============================================================
+
+  Test Accuracy  : 59.67%
+  Test F1 Score  : 0.559
+
+  Per-class report:
+              precision    recall  f1-score   support
+
+          CN       0.70      0.93      0.80        69
+         MCI       0.65      0.31      0.42        83
+          AD       0.36      0.62      0.46        29
+
+    accuracy                           0.60       181
+   macro avg       0.57      0.62      0.56       181
+weighted avg       0.62      0.60      0.57       181
+
+============================================================
+  TRAINING COMPLETE
+============================================================
+  Best Val Acc  : 64.84%
+  Best Val F1   : 0.659
+  Best Epoch    : 29
+  Test Accuracy : 59.67%
+  Test F1       : 0.559
+  Model saved   : F:\Program\LENS_ADNet\outputs\lens_adnet_best.pt
