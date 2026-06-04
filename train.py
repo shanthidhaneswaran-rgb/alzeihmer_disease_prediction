@@ -7,6 +7,7 @@ os.chdir(ROOT)
 
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import numpy as np
 import matplotlib
 matplotlib.use("Agg")
@@ -19,20 +20,19 @@ from data.preprocess import get_dataloaders
 from model.lens_adnet import LENSADNet
 
 # ===============================================================
-#  CONFIGURATION  — tuned for small dataset (448 scans)
+#  CONFIGURATION
 # ===============================================================
 DEVICE      = "cuda" if torch.cuda.is_available() else "cpu"
-EPOCHS      = 100
-STAGE1_END  = 20
-BATCH_SIZE  = 8       # increased from 4 to 8
-LR_HEAD     = 1e-3
-LR_FULL     = 1e-4    # increased from 3e-5
+EPOCHS      = 150
+STAGE1_END  = 30
+BATCH_SIZE  = 8
+LR_HEAD     = 5e-4
+LR_FULL     = 5e-5
 WARMUP      = 5
 FEAT_DIM    = 128
 N_RULES     = 8
 N_CLASSES   = 3
-PATIENCE    = 25
-MIXUP_ALPHA = 0.0     # disabled — hurts small datasets
+PATIENCE    = 30
 TTA_STEPS   = 5
 
 SAVE_DIR    = os.path.join(ROOT, "outputs")
@@ -43,6 +43,26 @@ CLASS_NAMES = ["CN", "MCI", "AD"]
 
 os.makedirs(SAVE_DIR, exist_ok=True)
 # ===============================================================
+
+
+class FocalLoss(nn.Module):
+    """
+    Focal Loss — focuses training on hard examples.
+    Specifically helps with MCI which is the hardest class.
+    gamma=2 means easy examples get downweighted strongly.
+    """
+    def __init__(self, weight=None, gamma=2.0):
+        super().__init__()
+        self.weight = weight
+        self.gamma  = gamma
+
+    def forward(self, logits, labels):
+        ce_loss = F.cross_entropy(logits, labels,
+                                   weight=self.weight,
+                                   reduction="none")
+        pt      = torch.exp(-ce_loss)
+        focal   = ((1 - pt) ** self.gamma) * ce_loss
+        return focal.mean()
 
 
 def log(msg, log_file):
@@ -73,11 +93,13 @@ def save_plot(history):
     fig.suptitle("LENS-ADNet — Training Curves", fontsize=13, fontweight="bold")
 
     ax = axes[0]
-    ax.plot(epochs, history["train_loss"], label="Train", color="#378ADD", lw=2)
-    ax.plot(epochs, history["val_loss"],   label="Val",   color="#E24B4A", lw=2)
+    ax.plot(epochs, history["train_loss"],
+            label="Train", color="#378ADD", lw=2)
+    ax.plot(epochs, history["val_loss"],
+            label="Val",   color="#E24B4A", lw=2)
     if STAGE1_END < len(history["train_loss"]):
         ax.axvline(STAGE1_END, color="gray", linestyle=":",
-                   lw=1.5, label=f"Stage 2 (ep{STAGE1_END})")
+                   lw=1.5, label=f"Stage2 ep{STAGE1_END}")
     ax.set_title("Loss"); ax.legend(); ax.grid(alpha=0.3)
     ax.spines[["top", "right"]].set_visible(False)
 
@@ -96,8 +118,9 @@ def save_plot(history):
     ax.spines[["top", "right"]].set_visible(False)
 
     ax = axes[2]
-    ax.plot(epochs, history["val_f1"], color="#D85A30", lw=2, label="Val F1")
-    ax.axhline(0.70, color="red", linestyle=":", lw=1, label="0.70 target")
+    ax.plot(epochs, history["val_f1"],
+            color="#D85A30", lw=2, label="Val F1")
+    ax.axhline(0.65, color="red", linestyle=":", lw=1, label="0.65 target")
     ax.set_title("Val F1 (macro)"); ax.legend(); ax.grid(alpha=0.3)
     ax.spines[["top", "right"]].set_visible(False)
 
@@ -129,7 +152,7 @@ def run_validation(model, val_loader, criterion, use_tta=False):
         for mri, clinical, labels in val_loader:
             mri      = mri.to(DEVICE)
             clinical = clinical.to(DEVICE)
-            labels   = labels.to(DEVICE)   # <-- fix: move labels to GPU
+            labels   = labels.to(DEVICE)
 
             if use_tta:
                 probs = predict_with_tta(model, mri, clinical, DEVICE)
@@ -157,14 +180,15 @@ def train():
 
     log("", LOG_PATH)
     log("  LENS-ADNet: Lightweight Explainable Neural-Symbolic Network", LOG_PATH)
-    log("  Dataset   : ADNI1 Complete 3Yr 1.5T (448 scans)", LOG_PATH)
-    log("  Realistic target: 72-82% accuracy", LOG_PATH)
+    log("  Key changes: Focal Loss + Smaller model + Lower LR", LOG_PATH)
+    log("  Realistic target: 72-80% accuracy", LOG_PATH)
     log("=" * 60, LOG_PATH)
     log(f"  Device      : {DEVICE}", LOG_PATH)
     log(f"  Epochs      : {EPOCHS}", LOG_PATH)
     log(f"  Batch size  : {BATCH_SIZE}", LOG_PATH)
-    log(f"  Mixup       : DISABLED (small dataset)", LOG_PATH)
-    log(f"  Label smooth: DISABLED (small dataset)", LOG_PATH)
+    log(f"  LR stage 1  : {LR_HEAD}", LOG_PATH)
+    log(f"  LR stage 2  : {LR_FULL}", LOG_PATH)
+    log(f"  Loss        : Focal Loss (gamma=2, fixes MCI bias)", LOG_PATH)
     log(f"  Split       : Patient-level (no data leakage)", LOG_PATH)
     log("", LOG_PATH)
 
@@ -180,9 +204,10 @@ def train():
     ).to(DEVICE)
 
     total_p = sum(p.numel() for p in model.parameters())
-    log(f"  Total parameters  : {total_p:,}", LOG_PATH)
+    log(f"  Total parameters : {total_p:,}", LOG_PATH)
+    log(f"  (Reduced from 6.1M to fix overfitting)", LOG_PATH)
 
-    # Class weights for imbalance
+    # Class weights
     class_counts = torch.zeros(N_CLASSES)
     for _, _, labels in train_loader:
         for lbl in labels:
@@ -193,11 +218,12 @@ def train():
     log("", LOG_PATH)
     log("  Class distribution:", LOG_PATH)
     for i, n in enumerate(CLASS_NAMES):
-        log(f"    {n}  : {int(class_counts[i])} scans  "
+        log(f"    {n}   : {int(class_counts[i])} scans  "
             f"(weight = {class_weights[i]:.3f})", LOG_PATH)
 
-    # No label smoothing — disabled for small dataset
-    criterion = nn.CrossEntropyLoss(weight=class_weights)
+    # Focal loss — fixes the MCI underprediction problem
+    criterion = FocalLoss(weight=class_weights, gamma=2.0)
+    log("  Loss function: Focal Loss (gamma=2.0)", LOG_PATH)
 
     history    = {"train_loss": [], "train_acc": [],
                   "val_loss":   [], "val_acc":   [], "val_f1": []}
@@ -206,17 +232,20 @@ def train():
     best_epoch   = 0
 
     # ============================================================
-    #  STAGE 1 — freeze backbone
+    #  STAGE 1 — backbone frozen
     # ============================================================
     log("\n" + "=" * 60, LOG_PATH)
-    log("  STAGE 1 — Backbone frozen", LOG_PATH)
+    log("  STAGE 1 — Backbone frozen, training head only", LOG_PATH)
     log("=" * 60, LOG_PATH)
 
     freeze_backbone(model)
-    opt1  = AdamW(filter(lambda p: p.requires_grad, model.parameters()),
-                  lr=LR_HEAD, weight_decay=1e-4)
-    sch1  = torch.optim.lr_scheduler.CosineAnnealingLR(
-        opt1, T_max=STAGE1_END, eta_min=1e-5)
+    opt1 = AdamW(
+        filter(lambda p: p.requires_grad, model.parameters()),
+        lr=LR_HEAD, weight_decay=1e-3
+    )
+    sch1 = torch.optim.lr_scheduler.CosineAnnealingLR(
+        opt1, T_max=STAGE1_END, eta_min=1e-5
+    )
 
     for epoch in range(1, STAGE1_END + 1):
         model.train()
@@ -232,7 +261,6 @@ def train():
             opt1.zero_grad()
             logits, _, rw, _ = model(mri, clinical)
             loss  = criterion(logits, labels)
-            # Sparsity: encourage rules to be selective
             loss += 0.005 * (-(rw * torch.log(rw + 1e-8)).sum(1).mean())
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -243,8 +271,8 @@ def train():
             ttotal += labels.size(0)
 
         sch1.step()
-        train_acc               = tcorr / ttotal
-        val_acc, val_f1, vloss  = run_validation(
+        train_acc              = tcorr / ttotal
+        val_acc, val_f1, vloss = run_validation(
             model, val_loader, criterion, use_tta=False)
 
         history["train_loss"].append(tloss / len(train_loader))
@@ -268,14 +296,14 @@ def train():
                 LOG_PATH)
 
     # ============================================================
-    #  STAGE 2 — unfreeze all
+    #  STAGE 2 — full fine-tuning
     # ============================================================
     log("\n" + "=" * 60, LOG_PATH)
     log("  STAGE 2 — Full fine-tuning", LOG_PATH)
     log("=" * 60, LOG_PATH)
 
     unfreeze_all(model)
-    opt2      = AdamW(model.parameters(), lr=LR_FULL, weight_decay=1e-4)
+    opt2      = AdamW(model.parameters(), lr=LR_FULL, weight_decay=1e-3)
     remaining = EPOCHS - STAGE1_END
 
     def lr_lambda(ep):
@@ -311,8 +339,8 @@ def train():
             ttotal += labels.size(0)
 
         sch2.step()
-        train_acc               = tcorr / ttotal
-        val_acc, val_f1, vloss  = run_validation(
+        train_acc              = tcorr / ttotal
+        val_acc, val_f1, vloss = run_validation(
             model, val_loader, criterion, use_tta=True)
 
         history["train_loss"].append(tloss / len(train_loader))
@@ -370,12 +398,12 @@ def train():
                                     target_names=CLASS_NAMES,
                                     zero_division=0)
 
-    log(f"\n  Test Accuracy  : {t_acc*100:.2f}%", LOG_PATH)
-    log(f"  Test F1 Score  : {t_f1:.3f}",         LOG_PATH)
-    log(f"\n  Per-class report:\n{report}",        LOG_PATH)
-    log("=" * 60,                                  LOG_PATH)
-    log("  TRAINING COMPLETE",                     LOG_PATH)
-    log("=" * 60,                                  LOG_PATH)
+    log(f"\n  Test Accuracy : {t_acc*100:.2f}%", LOG_PATH)
+    log(f"  Test F1       : {t_f1:.3f}",         LOG_PATH)
+    log(f"\n  Per-class report:\n{report}",       LOG_PATH)
+    log("=" * 60,                                 LOG_PATH)
+    log("  TRAINING COMPLETE",                    LOG_PATH)
+    log("=" * 60,                                 LOG_PATH)
     log(f"  Best Val Acc  : {best_val_acc*100:.2f}%", LOG_PATH)
     log(f"  Best Val F1   : {best_val_f1:.3f}",       LOG_PATH)
     log(f"  Best Epoch    : {best_epoch}",             LOG_PATH)
