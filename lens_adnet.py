@@ -1,9 +1,9 @@
 """
-lens_adnet.py  -  LENS-ADNet Full Model
-Fixes applied:
-  - Dropout reduced: 0.5/0.5/0.3 -> 0.3/0.2/0.1
-  - Gated symbolic layer (replaces softmax bottleneck)
-  - BatchNorm before classifier
+lens_adnet.py  -  LENS-ADNet
+Changes:
+  - Smaller CNN (3 stages, ~800K params total)
+  - Dropout reduced further: 0.2/0.1
+  - Simpler classifier head
 """
 
 import torch
@@ -19,42 +19,32 @@ class LENSADNet(nn.Module):
                  n_classes=3, n_rules=8):
         super().__init__()
 
-        # Block 1 - CNN
         self.cnn = LightweightCNN(out_features=feat_dim)
 
-        # Block 2 - Transformer
         self.transformer = TinyTransformer(
             feat_dim=feat_dim, n_tokens=8,
-            n_heads=2, n_layers=2
+            n_heads=2, n_layers=1   # reduced to 1 layer
         )
 
-        # Block 3 - Fusion
         self.fusion = FusionLayer(
             feat_dim=feat_dim,
             n_clinical=n_clinical,
             out_dim=feat_dim
         )
 
-        # Dropout after fusion — reduced from 0.5 to 0.3
-        self.fusion_drop = nn.Dropout(p=0.3)
+        self.fusion_drop = nn.Dropout(p=0.2)
 
-        # Block 4 - Gated Symbolic Reasoning
         self.symbolic = SymbolicReasoningLayer(
             embed_dim=feat_dim, n_rules=n_rules
         )
 
-        # Block 5 - Classifier
-        # Dropout reduced: 0.5/0.3 -> 0.2/0.1
+        # Simple classifier — fewer parameters
         self.classifier = nn.Sequential(
-            nn.Linear(feat_dim, 256),
-            nn.BatchNorm1d(256),
-            nn.GELU(),
-            nn.Dropout(0.2),
-            nn.Linear(256, 128),
-            nn.BatchNorm1d(128),
+            nn.Linear(feat_dim, 64),
+            nn.BatchNorm1d(64),
             nn.GELU(),
             nn.Dropout(0.1),
-            nn.Linear(128, n_classes),
+            nn.Linear(64, n_classes),
         )
 
         self._init_weights()
